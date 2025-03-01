@@ -32,15 +32,19 @@ io.on("connection", (socket) => {
         console.log(`📞 Call request from ${from} to ${userToCall}`);
         if (users[userToCall]) {
             io.to(userToCall).emit("incoming_call", { from, signal: signalData });
-        } else {
-            console.log("❌ User not found:", userToCall);
         }
     });
 
     // Handle call answering
     socket.on("answer_call", ({ signal, to }) => {
-        console.log(`✅ Call answered by ${to}`);
+        console.log(`✅ Call accepted by ${to}`);
         io.to(to).emit("call_accepted", signal);
+    });
+
+    // Handle call ending
+    socket.on("end_call", ({ to }) => {
+        console.log(`❌ Call ended by ${to}`);
+        io.to(to).emit("call_ended");
     });
 
     // Handle disconnection
