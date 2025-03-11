@@ -6,36 +6,36 @@ const cors = require("cors");
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: "*",
+  },
 });
 
-let users = {}; // Store users { socketId: username }
+app.use(cors());
+
+let users = {}; // Store connected users
 
 io.on("connection", (socket) => {
-  console.log("User connected:", socket.id);
+  console.log("New user connected:", socket.id);
 
-  // When a user joins, store them and send an updated list
-  socket.on("join", (username) => {
-    users[socket.id] = username;
-    io.emit("updateUserList", users);
+  // Add new user
+  users[socket.id] = { id: socket.id };
+  io.emit("userList", Object.values(users)); // Send updated user list
+
+  socket.on("offer", (data) => {
+    socket.to(data.target).emit("offer", { signal: data.signal, from: data.from });
   });
 
-  // Handle user disconnect
+  socket.on("answer", (data) => {
+    socket.to(data.target).emit("answer", { signal: data.signal });
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
     delete users[socket.id]; // Remove user
-    io.emit("updateUserList", users); // Send updated user list
-  });
-
-  // Call a user
-  socket.on("callUser", ({ userToCall, signalData, from, name }) => {
-    io.to(userToCall).emit("incomingCall", { signal: signalData, from, name });
-  });
-
-  // Answer a call
-  socket.on("answerCall", (data) => {
-    io.to(data.to).emit("callAccepted", data.signal);
+    io.emit("userList", Object.values(users)); // Update user list
   });
 });
 
-server.listen(5000, () => console.log("Server running on port 5000"));
+const PORT = 5000;
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
