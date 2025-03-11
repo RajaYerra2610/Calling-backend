@@ -9,32 +9,32 @@ const io = socketIo(server, {
   cors: { origin: "*" },
 });
 
-let users = {};
+let users = {}; // Store users { socketId: username }
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // Add user to the list
+  // When a user joins, store them and send an updated list
   socket.on("join", (username) => {
     users[socket.id] = username;
     io.emit("updateUserList", users);
   });
 
-  // Handle call request
+  // Handle user disconnect
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+    delete users[socket.id]; // Remove user
+    io.emit("updateUserList", users); // Send updated user list
+  });
+
+  // Call a user
   socket.on("callUser", ({ userToCall, signalData, from, name }) => {
     io.to(userToCall).emit("incomingCall", { signal: signalData, from, name });
   });
 
-  // Answer call
+  // Answer a call
   socket.on("answerCall", (data) => {
     io.to(data.to).emit("callAccepted", data.signal);
-  });
-
-  // Disconnect user
-  socket.on("disconnect", () => {
-    delete users[socket.id];
-    io.emit("updateUserList", users);
-    console.log("User disconnected:", socket.id);
   });
 });
 
