@@ -1,41 +1,46 @@
 const express = require("express");
 const http = require("http");
-const socketIo = require("socket.io");
+const { Server } = require("socket.io");
 const cors = require("cors");
 
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: "*",
-  },
-});
-
 app.use(cors());
 
-let users = {}; // Store connected users
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
+
+let users = {};
 
 io.on("connection", (socket) => {
-  console.log("New user connected:", socket.id);
+    socket.on("join", (userId) => {
+        users[socket.id] = userId;
+        io.emit("updateUserList", Object.values(users));
+    });
 
-  // Add new user
-  users[socket.id] = { id: socket.id };
-  io.emit("userList", Object.values(users)); // Send updated user list
+    socket.on("callUser", ({ to, offer }) => {
+        io.to(to).emit("incomingCall", { from: socket.id, offer });
+    });
 
-  socket.on("offer", (data) => {
-    socket.to(data.target).emit("offer", { signal: data.signal, from: data.from });
-  });
+    socket.on("answerCall", ({ to, answer }) => {
+        io.to(to).emit("callAccepted", { answer });
+    });
 
-  socket.on("answer", (data) => {
-    socket.to(data.target).emit("answer", { signal: data.signal });
-  });
+    socket.on("toggleAudio", ({ to, audio }) => {
+        io.to(to).emit("audioToggled", { audio });
+    });
 
-  socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
-    delete users[socket.id]; // Remove user
-    io.emit("userList", Object.values(users)); // Update user list
-  });
+    socket.on("toggleVideo", ({ to, video }) => {
+        io.to(to).emit("videoToggled", { video });
+    });
+
+    socket.on("endCall", ({ to }) => {
+        io.to(to).emit("callEnded");
+    });
+
+    socket.on("disconnect", () => {
+        delete users[socket.id];
+        io.emit("updateUserList", Object.values(users));
+    });
 });
 
-const PORT = 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(5000, () => console.log("Server running on port 5000"));
