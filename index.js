@@ -1,20 +1,24 @@
 const express = require("express");
 const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
+const socketIo = require("socket.io");
 
 const app = express();
-app.use(cors());
-
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
+const io = socketIo(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+    },
+});
 
 let users = {};
 
 io.on("connection", (socket) => {
-    socket.on("join", (userId) => {
-        users[socket.id] = userId;
-        io.emit("updateUserList", Object.values(users));
+    console.log("New user connected:", socket.id);
+
+    socket.on("join", (name) => {
+        users[socket.id] = name;
+        io.emit("updateUserList", Object.keys(users).map((id) => ({ id, name })));
     });
 
     socket.on("callUser", ({ to, offer }) => {
@@ -23,14 +27,9 @@ io.on("connection", (socket) => {
 
     socket.on("answerCall", ({ to, answer }) => {
         io.to(to).emit("callAccepted", { answer });
-    });
 
-    socket.on("toggleAudio", ({ to, audio }) => {
-        io.to(to).emit("audioToggled", { audio });
-    });
-
-    socket.on("toggleVideo", ({ to, video }) => {
-        io.to(to).emit("videoToggled", { video });
+        // ✅ Send Answer Call Notification
+        io.to(to).emit("notification", { message: "Your call was answered!" });
     });
 
     socket.on("endCall", ({ to }) => {
@@ -39,7 +38,7 @@ io.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
         delete users[socket.id];
-        io.emit("updateUserList", Object.values(users));
+        io.emit("updateUserList", Object.keys(users).map((id) => ({ id, name: users[id] })));
     });
 });
 
