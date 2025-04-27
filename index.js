@@ -1,45 +1,38 @@
-const express = require("express");
-const http = require("http");
-const socketIo = require("socket.io");
+// Install express first by running: npm install express
 
+const express = require('express');
 const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"],
+const PORT = 3000; // You can change the port if needed
+
+const data = [
+    {
+        container: "container container1",
+        iconUrl: "https://assets.ccbp.in/frontend/react-js/primary-icon-img.png",
+        paragraph: "information message",
     },
+    {
+        container: "container container2",
+        iconUrl: "https://assets.ccbp.in/frontend/react-js/success-icon-img.png",
+        paragraph: "success message",
+    },
+    {
+        container: "container container3",
+        iconUrl: "https://assets.ccbp.in/frontend/react-js/warning-icon-img.png",
+        paragraph: "warning message",
+    },
+    {
+        container: "container container4",
+        iconUrl: "https://assets.ccbp.in/frontend/react-js/danger-icon-img.png",
+        paragraph: "error message",
+    }
+];
+
+// Create a GET route
+app.get('/data', (req, res) => {
+    res.json(data); // Send the data as JSON
 });
 
-let users = {};
-
-io.on("connection", (socket) => {
-    console.log("New user connected:", socket.id);
-
-    socket.on("join", (name) => {
-        users[socket.id] = name;
-        io.emit("updateUserList", Object.keys(users).map((id) => ({ id, name })));
-    });
-
-    socket.on("callUser", ({ to, offer }) => {
-        io.to(to).emit("incomingCall", { from: socket.id, offer });
-    });
-
-    socket.on("answerCall", ({ to, answer }) => {
-        io.to(to).emit("callAccepted", { answer });
-
-        // ✅ Send Answer Call Notification
-        io.to(to).emit("notification", { message: "Your call was answered!" });
-    });
-
-    socket.on("endCall", ({ to }) => {
-        io.to(to).emit("callEnded");
-    });
-
-    socket.on("disconnect", () => {
-        delete users[socket.id];
-        io.emit("updateUserList", Object.keys(users).map((id) => ({ id, name: users[id] })));
-    });
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
-
-server.listen(5000, () => console.log("Server running on port 5000"));
