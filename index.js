@@ -1,8 +1,10 @@
-// Install express first by running: npm install express
-
 const express = require('express');
+const cors = require('cors');
 const app = express();
 const PORT = 3000; // You can change the port if needed
+
+// Enable CORS
+app.use(cors());
 
 const data = [
     {
